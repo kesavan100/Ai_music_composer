@@ -1,8 +1,7 @@
-streamlit==1.15.0
+streamlit==1.44.1
 magenta==2.1.5
-pyttsx3==2.90
-pydub==0.25.1
 gTTS==2.2.4
+pydub==0.25.1
 ffmpeg-python==0.2.0
 tensorflow==2.10.0
 note-seq==0.0.4
