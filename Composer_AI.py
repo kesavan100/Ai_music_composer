@@ -1,5 +1,5 @@
 import streamlit as st
-import pyttsx3
+from gtts import gTTS
 from pydub import AudioSegment
 from magenta.models.music_vae import TrainedModel
 from magenta.models.music_vae import configs
@@ -39,25 +39,11 @@ def generate_melody(genre):
 
     return wav_path
 
-# Function to synthesize lyrics to speech
+# Function to synthesize lyrics to speech using gTTS (Google Text-to-Speech)
 def synthesize_lyrics(lyrics):
-    tts_path = "lyrics.wav"
-    engine = pyttsx3.init()
-    engine.setProperty('rate', 130)
-    engine.setProperty('volume', 1)
-
-    voices = engine.getProperty('voices')
-    tamil_voice = None
-    for voice in voices:
-        if 'tamil' in voice.languages[0].lower():
-            tamil_voice = voice
-            break
-    
-    if tamil_voice:
-        engine.setProperty('voice', tamil_voice.id)
-    engine.save_to_file(lyrics, tts_path)
-    engine.runAndWait()
-
+    tts_path = "lyrics.mp3"
+    tts = gTTS(text=lyrics, lang='ta')  # 'ta' for Tamil language
+    tts.save(tts_path)
     return tts_path
 
 # Function to mix music and lyrics
