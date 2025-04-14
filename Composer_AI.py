@@ -1,13 +1,12 @@
 import streamlit as st
-import os
+import pyttsx3
 from pydub import AudioSegment
 from magenta.models.music_vae import TrainedModel
 from magenta.models.music_vae import configs
 from magenta.music import sequence_proto_to_midi_file
 import note_seq
-from gtts import gTTS
 
-# Function to generate music based on genre
+# Function to generate melody based on the genre
 def generate_melody(genre):
     genre_map = {
         'pop': ('cat-mel_2bar_big', 80),
@@ -24,9 +23,12 @@ def generate_melody(genre):
         genre = 'pop'
 
     model_name, length = genre_map[genre]
-
     config = configs.CONFIG_MAP[model_name]
-    model = TrainedModel(config, batch_size=1, checkpoint_dir_or_path=f'https://storage.googleapis.com/magentadata/models/music_vae/{model_name}.tar')
+    model = TrainedModel(
+        config,
+        batch_size=1,
+        checkpoint_dir_or_path=f'https://storage.googleapis.com/magentadata/models/music_vae/{model_name}.tar'
+    )
 
     generated = model.sample(n=1, length=length, temperature=1.0)[0]
 
@@ -37,50 +39,55 @@ def generate_melody(genre):
 
     return wav_path
 
-# Convert lyrics to speech
+# Function to synthesize lyrics to speech
 def synthesize_lyrics(lyrics):
-    tts_path = "lyrics.mp3"
+    tts_path = "lyrics.wav"
+    engine = pyttsx3.init()
+    engine.setProperty('rate', 130)
+    engine.setProperty('volume', 1)
 
-    tts = gTTS(text=lyrics, lang='ta')
-    tts.save(tts_path)
+    voices = engine.getProperty('voices')
+    tamil_voice = None
+    for voice in voices:
+        if 'tamil' in voice.languages[0].lower():
+            tamil_voice = voice
+            break
+    
+    if tamil_voice:
+        engine.setProperty('voice', tamil_voice.id)
+    engine.save_to_file(lyrics, tts_path)
+    engine.runAndWait()
 
     return tts_path
 
-# Mix music and voice
+# Function to mix music and lyrics
 def mix_audio(music_path, lyrics_path, output_path="final_song.mp3"):
     music = AudioSegment.from_file(music_path)
     vocals = AudioSegment.from_file(lyrics_path)
 
     music = music - 6
     mixed = music.overlay(vocals)
-
     mixed.export(output_path, format="mp3")
+
     return output_path
 
-# Streamlit app
-def main():
-    st.title('AI Music Composer')
+# Streamlit App UI
+st.title("AI Music Composer")
+st.write("🎹 Generate music based on genre and synthesize lyrics!")
 
-    genre = st.text_input('Enter music genre (Pop, Jazz, Rock, Classical, LoFi, EDM, HipHop):', 'pop')
-    lyrics = st.text_area('Enter your lyrics (Tamil supported):', 'உங்கள் பாடல் இங்கே இடுக.')
+genre = st.text_input("Enter music genre (Pop, Jazz, Rock, Classical, LoFi, EDM, HipHop):")
+lyrics = st.text_area("Enter your lyrics (you can use Tamil text):")
 
-    if st.button('Generate Song'):
-        st.write("🎶 Generating Music and Lyrics...")
-
-        # Generate music based on genre
+if st.button("Generate Music"):
+    if genre and lyrics:
+        st.write("🎼 Generating melody...")
         music_path = generate_melody(genre)
-        st.write("🎵 Music Generated!")
-
-        # Convert lyrics to speech
+        st.write("📝 Converting lyrics to speech...")
         lyrics_path = synthesize_lyrics(lyrics)
-        st.write("🗣️ Lyrics Synthesized!")
+        st.write("🎧 Mixing music and vocals...")
+        final_song = mix_audio(music_path, lyrics_path)
 
-        # Mix music and vocals
-        final_song_path = mix_audio(music_path, lyrics_path)
-        st.write(f"🎼 Final song generated: {final_song_path}")
-
-        # Display the audio player
-        st.audio(final_song_path, format='audio/mp3')
-
-if __name__ == "__main__":
-    main()
+        st.success("✅ Music generated successfully!")
+        st.audio(final_song)
+    else:
+        st.error("Please provide both genre and lyrics!")
